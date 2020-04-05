@@ -1,0 +1,4 @@
+{
+	"target_config_set_name": "dev",
+	"pg_password": "{{ cookiecutter.pg_password }}"
+}
