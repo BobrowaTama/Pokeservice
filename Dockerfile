@@ -44,7 +44,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5
 COPY --from=build /root/wheels /root/wheels
 
 # Project from built packages
-RUN pip install --no-index --find-links=/root/wheels pokeservice
+RUN pip install --no-index --find-links=/root/wheels 'pokeservice[production]'
 
 ENV FLASK_APP=pokeservice POKESERVICE_FLASK_INSTANCE_DIR=/root/pokeservice/instance
 
@@ -53,5 +53,5 @@ COPY docker_configs/${TARGET_CONFIG_SET_NAME}/web_instance_dir $POKESERVICE_FLAS
 
 ENV PORT=5000
 
-CMD flask run -h 0.0.0.0 -p $PORT
-EXPOSE 5000/tcp
+#CMD flask run -h 0.0.0.0 -p $PORT
+CMD gunicorn pokeservice.wsgi:app

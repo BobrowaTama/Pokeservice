@@ -1,4 +1,5 @@
 flask
+werkzeug
 flask-restful
 webargs
 SQLAlchemy
@@ -6,3 +7,4 @@ SQLAlchemy-Utc
 psycopg2
 flask_sqlalchemy_session
 requests
+gunicorn

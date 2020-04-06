@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 
 requires = [
     'flask',
+    'werkzeug',
     'click',
     'flask-restful',
     'webargs',
@@ -21,7 +22,10 @@ extras_require = {
     ],
     'deploy': [
         'cookiecutter',
-    ]
+    ],
+    'production': [
+        'gunicorn',
+    ],
 }
 
 
