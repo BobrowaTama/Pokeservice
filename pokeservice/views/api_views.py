@@ -1,6 +1,5 @@
 import urllib.parse
 
-import marshmallow.exceptions
 import flask_restful
 import flask_restful.fields
 import sqlalchemy as sa
@@ -17,7 +16,8 @@ from .flask_restful_extra_fields import TimestampSeconds
 
 class WebargsFlaskParser(webargs.flaskparser.FlaskParser):
     def handle_error(self, error, req, schema, *, error_status_code, error_headers):
-        details = error.messages.get('json')
+        details = error.messages.get('json') if isinstance(error.messages, dict) else None
+
         if details:
             raise exceptions.EndpointArgumentsValidaionError(
                 "Endpoint argument validation failed",
@@ -42,20 +42,19 @@ class PokemonNotInDbError(exceptions.InvalidApiRequestError):
     pass
 
 
-_pokemon_response_fields = dict(
-    id                 = flask_restful.fields.Integer(attribute='pokeapi_id'),
-    name               = flask_restful.fields.String,
-    base_experience    = flask_restful.fields.Integer,
-    height             = flask_restful.fields.Integer,
-    weight             = flask_restful.fields.Integer,
-    sprites            = flask_restful.fields.Raw,
-)
-
-
 POKEAPI_BASE_URL = 'https://pokeapi.co'
 
 
 class Pokemon(flask_restful.Resource):
+    _pokemon_response_fields = dict(
+        id=flask_restful.fields.Integer(attribute='pokeapi_id'),
+        name=flask_restful.fields.String,
+        base_experience=flask_restful.fields.Integer,
+        height=flask_restful.fields.Integer,
+        weight=flask_restful.fields.Integer,
+        sprites=flask_restful.fields.Raw,
+    )
+
     @args_parser.use_args({
         'name': webargs.fields.Str(required=True)
     })
@@ -75,14 +74,14 @@ class Pokemon(flask_restful.Resource):
                 else:
                     raise UnknownPokemonNameError(f"Cannot find Pokemon with name {pokemon_name!r}.")
 
-            pokemon_json = flask_restful.marshal(pokemon, _pokemon_response_fields)
+            pokemon_json = flask_restful.marshal(pokemon, self._pokemon_response_fields)
 
         return pokemon_json
 
     def get(self):
         with current_request_transaction() as session:
             all_pokemon = session.query(models.Pokemon).all()
-            all_pokemon_json = flask_restful.marshal(all_pokemon, _pokemon_response_fields)
+            all_pokemon_json = flask_restful.marshal(all_pokemon, self._pokemon_response_fields)
 
         return all_pokemon_json
 
@@ -110,14 +109,13 @@ class Pokemon(flask_restful.Resource):
         return pokemon
 
 
-_encounter_response_fields = dict(
-    note               = flask_restful.fields.String,
-    place              = flask_restful.fields.String,
-    timestamp          = TimestampSeconds,
-)
-
-
 class Encounters(flask_restful.Resource):
+    _encounter_response_fields = dict(
+        note=flask_restful.fields.String,
+        place=flask_restful.fields.String,
+        timestamp=TimestampSeconds,
+    )
+
     @args_parser.use_args({
         'place': webargs.fields.Str(required=True),
         'note': webargs.fields.Str()
@@ -157,12 +155,11 @@ class Encounters(flask_restful.Resource):
 
         return pokemon
 
-    @staticmethod
-    def _marshal_encounter(encounter):
+    def _marshal_encounter(self, encounter):
         # Unfortunately, Flask-RESTful does not support optional keys when marshalling objects,
         #  so we need to post-process the dict
 
-        ret = flask_restful.marshal(encounter, _encounter_response_fields)
+        ret = flask_restful.marshal(encounter, self._encounter_response_fields)
         ret = _filter_none_values(ret, {'note'})
 
         return ret
