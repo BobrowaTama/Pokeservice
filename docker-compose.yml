@@ -9,6 +9,8 @@ services:
 
     env_file:
       - docker_configs/${TARGET_CONFIG_SET_NAME}/docker_env/pg_creds.env
+    environment:
+      - PORT=5000
 
     depends_on:
       - db

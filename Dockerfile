@@ -2,9 +2,16 @@
 # https://softwarejourneyman.com/docker-python-install-wheels.html
 
 
+FROM python:3.8-buster AS base
+
+# make /bin/sh symlink to bash instead of dash:
+RUN echo "dash dash/sh boolean false" | debconf-set-selections
+RUN DEBIAN_FRONTEND=noninteractive dpkg-reconfigure dash
+
+
 # Build container:
 
-FROM python:3.8-buster AS build
+FROM base AS build
 CMD sh
 
 # Python packaging tools
@@ -26,7 +33,7 @@ RUN pip wheel --wheel-dir=/root/wheels /root/sources/pokeservice
 
 # Target container:
 
-FROM python:3.8-buster AS app
+FROM base AS app
 CMD sh
 
 # System dependencies
@@ -44,5 +51,7 @@ ENV FLASK_APP=pokeservice POKESERVICE_FLASK_INSTANCE_DIR=/root/pokeservice/insta
 ARG TARGET_CONFIG_SET_NAME
 COPY docker_configs/${TARGET_CONFIG_SET_NAME}/web_instance_dir $POKESERVICE_FLASK_INSTANCE_DIR
 
-CMD flask run -h 0.0.0.0
+ENV PORT=5000
+
+CMD flask run -h 0.0.0.0 -p $PORT
 EXPOSE 5000/tcp
