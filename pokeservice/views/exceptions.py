@@ -1,38 +1,49 @@
 import flask
+import werkzeug.exceptions
 
 # from flask import jsonify
 
-api_exception_views_bp = flask.Blueprint('pokeservice_api_exceptions', __name__)
+# api_exception_views_bp = flask.Blueprint('pokeservice_api_exceptions', __name__)
 
 
-class BaseApiError(Exception):
-    def __init__(self, message, status_code=None, details=None):
+class BaseApiError(werkzeug.exceptions.HTTPException):
+    def __init__(self, message, details=None):
         super().__init__(message)
 
-        if status_code is not None:
-            self.status_code = status_code
-
         self.details = dict(details) if details else {}
-        self.details['message'] = message
 
-    def to_dict(self):
-        return self.details
+        # Hack to prevent Flask-Restful interfering with our exception handling
+        self.response = self.get_response()
 
 
 class InvalidApiRequestError(BaseApiError):
-    status_code = 400
+    code = 400
 
 
-# class ApiRequestMissingRequiredFieldError(InvalidApiRequestError):
-#     def __init__(self, field_name):
-#         super().__init__(f"{field_name!r} is a required request field for this endpoint.")
+class EndpointArgumentsValidaionError(InvalidApiRequestError):
+    code = 422
 
 
-@api_exception_views_bp.errorhandler(BaseApiError)
-def handle_invalid_usage(error):
-    contents = {'error': error.to_dict()}
+def handle_api_error(e :BaseApiError):
+    return handle_http_exception(
+        e,
+        {'details': e.details}
+    )
 
-    response = flask.jsonify(contents)
-    response.status_code = error.status_code
 
+def handle_http_exception(
+    e :werkzeug.exceptions.HTTPException,
+    extra=None,
+):
+    """Return JSON instead of HTML for HTTP errors."""
+
+    details = {
+        "code": e.code,
+        "name": e.name,
+        "description": e.description,
+    }
+    if extra:
+        details.update(extra)
+    response = flask.jsonify({'error': details})
+    response.status_code = e.code
     return response

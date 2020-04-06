@@ -1,5 +1,6 @@
 import urllib.parse
 
+import marshmallow.exceptions
 import flask_restful
 import flask_restful.fields
 import sqlalchemy as sa
@@ -10,15 +11,34 @@ import webargs.flaskparser
 from .. import models
 from ..db import current_request_transaction
 
-from .exceptions import InvalidApiRequestError
+from . import exceptions
 from .flask_restful_extra_fields import TimestampSeconds
 
 
-class UnknownPokemonNameError(InvalidApiRequestError):
+class WebargsFlaskParser(webargs.flaskparser.FlaskParser):
+    def handle_error(self, error, req, schema, *, error_status_code, error_headers):
+        details = error.messages.get('json')
+        if details:
+            raise exceptions.EndpointArgumentsValidaionError(
+                "Endpoint argument validation failed",
+                dict(fields=details)
+            )
+
+        super().handle_error(
+            error, req, schema,
+            error_status_code=error_status_code,
+            error_headers=error_headers,
+        )
+
+
+args_parser = WebargsFlaskParser()
+
+
+class UnknownPokemonNameError(exceptions.InvalidApiRequestError):
     pass
 
 
-class PokemonNotInDbError(InvalidApiRequestError):
+class PokemonNotInDbError(exceptions.InvalidApiRequestError):
     pass
 
 
@@ -36,7 +56,7 @@ POKEAPI_BASE_URL = 'https://pokeapi.co'
 
 
 class Pokemon(flask_restful.Resource):
-    @webargs.flaskparser.use_args({
+    @args_parser.use_args({
         'name': webargs.fields.Str(required=True)
     })
     def post(self, args):
@@ -98,7 +118,7 @@ _encounter_response_fields = dict(
 
 
 class Encounters(flask_restful.Resource):
-    @webargs.flaskparser.use_args({
+    @args_parser.use_args({
         'place': webargs.fields.Str(required=True),
         'note': webargs.fields.Str()
     })
