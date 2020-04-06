@@ -1,6 +1,8 @@
 import flask
 import flask.testing
 
+from . import utils
+
 
 class AnyInt:
     def __eq__(self, other):
@@ -76,34 +78,23 @@ class samples:
 
 
 def test_end_to_end(app :flask.Flask, recreate_db):
-    client :flask.testing.FlaskClient = app.test_client()
+    test_client :flask.testing.FlaskClient = app.test_client()
+    connector = utils.FlaskTestClientJsonApiConnector(test_client)
 
-    resp = client.get('/api/pokemon')
-    assert resp.status_code == 200
-    assert resp.get_json() == []
+    response_data = connector.make_json_request('GET', '/api/pokemon')
+    assert response_data == []
 
-    resp = client.post('/api/pokemon', json=samples.post_pokemon_endpoint_request)
-    assert resp.status_code == 200
-    assert resp.get_json() == samples.post_pokemon_endpoint_response
+    response_data = connector.make_json_request('post', '/api/pokemon', samples.post_pokemon_endpoint_request)
+    assert response_data == samples.post_pokemon_endpoint_response
 
-    resp = client.get('/api/pokemon')
-    assert resp.status_code == 200
-    assert resp.get_json() == samples.get_pokemon_endpoint_response
+    response_data = connector.make_json_request('get', '/api/pokemon')
+    assert response_data == samples.get_pokemon_endpoint_response
 
-    resp = client.post('/api/pokemon/1/encounters', json=samples.post_encounter_request_1)
-    assert resp.status_code == 200
-    resp_json = resp.get_json()
-    # assert isinstance(resp_json['timestamp'], int)
-    # del resp_json['timestamp']
-    assert resp_json == samples.post_encounter_response_1
+    response_data = connector.make_json_request('post', '/api/pokemon/1/encounters', samples.post_encounter_request_1)
+    assert response_data == samples.post_encounter_response_1
 
-    resp = client.post('/api/pokemon/1/encounters', json=samples.post_encounter_request_2)
-    assert resp.status_code == 200
-    resp_json = resp.get_json()
-    # assert isinstance(resp_json['timestamp'], int)
-    # del resp_json['timestamp']
-    assert resp_json == samples.post_encounter_response_2
+    response_data = connector.make_json_request('post', '/api/pokemon/1/encounters', samples.post_encounter_request_2)
+    assert response_data == samples.post_encounter_response_2
 
-    resp = client.get('/api/pokemon/1/encounters')
-    assert resp.status_code == 200
-    assert resp.get_json() == samples.get_encounter_response
+    response_data = connector.make_json_request('get', '/api/pokemon/1/encounters')
+    assert response_data == samples.get_encounter_response
